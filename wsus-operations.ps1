@@ -1,4 +1,6 @@
-﻿$action = $false
+#author: happysysadm.com
+
+$action = $false
 
 $now = Get-Date
 
