@@ -27,7 +27,7 @@
    Shows the date of the next sync based on the value specified with the SyncDelay parameter.
 .PARAMETER SyncDelay
    Specifies the number of days to wait between Patch Tuesday and the day the WSUS server is synchronized.
-.PARAMETER ShowNextClenaupDay
+.PARAMETER ShowNextCleanupDay
    Shows the date of the next WSUS cleanup performed used AdamJ's script.
 .PARAMETER CleanupDay
    Specifies the day of the month at which the WSUS cleanup with AdamJ's script is executed.
@@ -133,7 +133,7 @@ function Invoke-Wsus
         [int]$SyncDelay,
 
         [Parameter(Mandatory=$true,ParameterSetName='Show Next CleanUp Day')]
-        [switch]$ShowNextClenaupDay,
+        [switch]$ShowNextCleanupDay,
 
         [Parameter(Mandatory=$true,ParameterSetName='Show Next CleanUp Day')]
         [Parameter(Mandatory=$true,ParameterSetName='Show All')]
@@ -346,7 +346,7 @@ function Invoke-Wsus
 
         }
 
-   if($ShowNextClenaupDay -or $SendMail -or $ShowAll){
+   if($ShowNextCleanupDay -or $SendMail -or $ShowAll){
 
         if($Now -eq (get-date $Now -Day $CleanupDay)){
         
