@@ -1,4 +1,6 @@
-﻿$DelaySettings = @()
+#author: happysysadm
+
+$DelaySettings = @()
 
 $DelaySettings += [pscustomobject]@{
 
