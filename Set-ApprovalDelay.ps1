@@ -1,28 +1,25 @@
 #author: happysysadm
+$DelaySettings = New-Object System.Collections.ArrayList
 
-$DelaySettings = @()
+$DelaySettings.Add(
 
-$DelaySettings += [pscustomobject]@{
+    [PSCustomObject]@{
 
-    Name          = 'Immediate'
+        Name          = 'Immediate'
+        WsusGroup   = 'Standard'
+        ApprovalDelay = 1
+    }
+)
 
-    WsusGroup   = 'Standard'
+$DelaySettings.Add(
 
-    ApprovalDelay = 1
+    [PSCustomObject]@{
 
-}
+        Name          = 'OneWeek'
+        WsusGroup   = 'Touchy','Critical'
+        ApprovalDelay = 7
+    }
+)
 
-$DelaySettings += [pscustomobject]@{
-
-    Name          = 'OneWeek'
-
-    WsusGroup   = 'Touchy','Critical'
-
-    ApprovalDelay = 7
-
-}
-
-
-$DelaySettings | ConvertTo-Json  | Out-File approvaldelaysettings.json -Force
-
-Get-Content approvaldelaysettings.json | ConvertFrom-Json
+$DelaySettings | ConvertTo-Json | Out-File ApprovalDelaySettings.json -Force
+Get-Content ApprovalDelaySettings.json | ConvertFrom-Json
