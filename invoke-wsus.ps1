@@ -33,7 +33,7 @@
 .PARAMETER ShowNextPatchTuesday
    Shows the date of the next Patch Tuesday aka Update Tuesday.
 
-.PARAMETER ShowNextSyncTuesday
+.PARAMETER ShowNextSyncDay
    Shows the date of the next sync based on the value specified with the SyncDelay parameter.
 
 .PARAMETER SyncDelay
@@ -53,7 +53,7 @@
    Shows all the future approval dates based on the settings specified in the SettingFile parameter.
 
 .PARAMETER RunApprovalSchedules
-   Runs the approvals based on the settings specified in the SettingFile parameter.
+   Runs the approvals based on the settings specified in the SettingFile parameter and also synchronizezs WSUS if it is syncday
 
 .PARAMETER SendMail
    Send a mail wich contains the approval groups sorted from the JSON setting file, the existing WSUS target groups and the dates of the next events (Patch Tuesday, Synchronization day, WSUS clean up day and all the futureapproval dates).
@@ -83,7 +83,7 @@
    Invoke-WSUS -ShowNextPatchTuesday
 
 .EXAMPLE
-   Invoke-WSUS -ShowNextSyncTuesday -SyncDelay 13
+   Invoke-WSUS -ShowNextSyncDay -SyncDelay 13
 
 .EXAMPLE
    Invoke-WSUS -ShowAll -SettingFile 'approvaldelaysettings.json' -CleanupDay 7 -SyncDelay 13  -WSUSName 'WSUSserver' -WSUSPort 8530 -WSUSSSL:$false
@@ -152,7 +152,7 @@ Param(
     [Switch]$ShowNextPatchTuesday,
 
     [Parameter(Mandatory=$true,ParameterSetName='Show Next Synchronization Day')]
-    [Switch]$ShowNextSyncTuesday,
+    [Switch]$ShowNextSyncDay,
 
     [Parameter(Mandatory=$true,ParameterSetName='Show Next Synchronization Day')]
     [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
@@ -190,7 +190,7 @@ Param(
     [String]$To
 )
 
-    $Now = Get-Date
+    $Now = Get-Date '25 june 2018'
     "Today is $Now"
 
     $MailBody = New-Object System.Collections.ArrayList
@@ -204,7 +204,7 @@ Param(
         $MailBody.Add(($DelaySettings | ConvertTo-Html)) | Out-Null
     }
 
-    if($ShowWSUSTargetGroups -or $SyncWSUSNow -or $ShowLastWSUSSync -or $SendMail -or $ShowAll) {
+    if($ShowWSUSTargetGroups -or $SyncWSUSNow -or $ShowLastWSUSSync -or $SendMail -or $ShowAll -or $ShowApprovalSchedules) {
 
         $WSUSServerParams = @{
 
@@ -290,7 +290,7 @@ Param(
         }
     }
 
-    if($ShowNextPatchTuesday -or $ShowNextSyncTuesday -or $ShowApprovalSchedules -or $SendMail -or $ShowAll) {
+    if($ShowNextPatchTuesday -or $ShowNextSyncDay -or $ShowApprovalSchedules -or $SendMail -or $ShowAll) {
 
         Write-Verbose -Message "Calculating date of the next Patch Tuesday aka Update Tuesday"
 
@@ -324,7 +324,7 @@ Param(
         }
     }
 
-    if($ShowNextSyncTuesday -or $ShowApprovalSchedules -or $SendMail -or $ShowAll) {
+    if($ShowNextSyncDay -or $ShowApprovalSchedules -or $SendMail -or $ShowAll) {
 
         Write-Verbose -Message "Showing date of the next synchronization day based on date of last and next patch tuesdays"
 
@@ -351,6 +351,12 @@ Param(
         
             $MailBody.Add("Today is Sync Day<br>") | Out-Null
             "Today is Sync Day"      
+
+            if($RunApprovalSchedules){ 
+            
+                #$WSUS.GetSubscription().StartSynchronization()
+                
+                }
         }
     }
 
@@ -386,7 +392,7 @@ Param(
             Write-Verbose -Message "Retrieving needed patches to approve from $WSUSName"
         
             $AllUpdates = $WSUS.GetUpdates()            
-            $NeededUpdates = Get-WSUSUpdate -Approval Unapproved -Status FailedOrNeeded
+            #$NeededUpdates = Get-WSUSUpdate -Approval Unapproved -Status FailedOrNeeded
         }
         
         foreach ($Schedule in $DelaySettings) {
@@ -403,7 +409,7 @@ Param(
                     if($RunApprovalSchedules) {
 
                         Write-Verbose -Message "Approving WSUS patches for $group"
-                        #$NeededUpdates | Approve-WSUSUpdate -Action Install -TargetGroupName $Group -Verbose
+                        $NeededUpdates | Approve-WSUSUpdate -Action Install -TargetGroupName $Group -Verbose
                     }
                 }
             }
