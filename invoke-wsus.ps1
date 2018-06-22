@@ -190,7 +190,7 @@ Param(
     [String]$To
 )
 
-    $Now = Get-Date '25 june 2018'
+    $Now = Get-Date
     "Today is $Now"
 
     $MailBody = New-Object System.Collections.ArrayList
