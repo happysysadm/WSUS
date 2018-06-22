@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
    Invoke-WSUS is a function used to manage WSUS.
 
@@ -77,7 +77,7 @@
    Invoke-WSUS -SyncWSUSNow -WSUSName 'WSUSserver' -WSUSPort 8530 -WSUSSSL:$false
 
 .EXAMPLE
-   Invoke-WSUS -ShowLastWSUSSync -WSUSName 'rousww0045' -WSUSPort 8530 -WSUSSSL:$false
+   Invoke-WSUS -ShowLastWSUSSync -WSUSName 'WSUSserver' -WSUSPort 8530 -WSUSSSL:$false
 
 .EXAMPLE
    Invoke-WSUS -ShowNextPatchTuesday
@@ -89,10 +89,10 @@
    Invoke-WSUS -ShowAll -SettingFile 'approvaldelaysettings.json' -CleanupDay 7 -SyncDelay 13  -WSUSName 'WSUSserver' -WSUSPort 8530 -WSUSSSL:$false
 
 .EXAMPLE
-   Invoke-WSUS -ShowApprovalSchedules -SettingFile 'approvaldelaysettings.json' -SyncDelay 13 -WSUSName 'rousww0045' -WSUSPort 8530
+   Invoke-WSUS -ShowApprovalSchedules -SettingFile 'approvaldelaysettings.json' -SyncDelay 13 -WSUSName 'WSUSserver' -WSUSPort 8530
 
 .EXAMPLE
-   Invoke-WSUS -ShowApprovalSchedules -SettingFile 'E:\Script\approvaldelaysettings.json' -SyncDelay 13 -RunApprovalSchedules -WSUSName 'rousww0045' -WSUSPort 8530 -WSUSSSL:$false
+   Invoke-WSUS -ShowApprovalSchedules -SettingFile 'approvaldelaysettings.json' -SyncDelay 13 -RunApprovalSchedules -WSUSName 'WSUSserver' -WSUSPort 8530 -WSUSSSL:$false
 
 .NOTES
    Author:  happysysadm
@@ -201,7 +201,7 @@ Param(
 
         $DelaySettings = Get-Content $SettingFile | ConvertFrom-Json
         $DelaySettings
-        $MailBody.Add("$( $DelaySettings | ConvertTo-Html )")
+        $MailBody.Add(($DelaySettings | ConvertTo-Html)) | Out-Null
     }
 
     if($ShowWSUSTargetGroups -or $SyncWSUSNow -or $ShowLastWSUSSync -or $SendMail -or $ShowAll) {
@@ -238,12 +238,17 @@ Param(
 
             foreach($TargetGroup in $AllTargetGroups) {
     
-                $GroupInfo.Add("$( $TargetGroup | Select Name, @{Name='Total computers'; Expression={$TargetGroup.GetComputerTargets().Count}} )")
-            }
+                $GroupInfo.Add("$( $TargetGroup | Select Name, @{Name='Total computers'; Expression={$TargetGroup.GetComputerTargets().Count}} )") | Out-Null
+
+                }
 
             $GroupInfo | Out-String -Width 160
 
-            $MailBody.Add("$( $GroupInfo | ConvertTo-Html )")
+            $MailBody.add("<table><colgroup><col/></colgroup><tr><th>*</th></tr>")
+            $MailBody.Add("$($groupinfo -replace '@{','<tr><td>' -replace';','</td><td>' -replace '}','</td></tr>')")
+            $MailBody.Add("</table>")
+
+#            $MailBody.Add("$( $GroupInfo | Select {$_.Trim()} | ConvertTo-Html )") | Out-Null
 
         }
 
@@ -276,7 +281,7 @@ Param(
 
             $LastSync = $WSUS.GetSubscription().LastSynchronizationTime
             "Last sync was $([Int](New-TimeSpan -Start $LastSync -end (Get-Date)).TotalDays) days ago on $LastSync"
-            $MailBody.Add("Last sync was $([Int](New-TimeSpan -Start $LastSync -end (Get-Date)).TotalDays) days ago on $LastSync<br>")
+            $MailBody.Add("Last sync was $([Int](New-TimeSpan -Start $LastSync -end (Get-Date)).TotalDays) days ago on $LastSync<br>") | Out-Null
         }
 
         catch { 
@@ -308,13 +313,13 @@ Param(
 
         if($TimespanToNextPatchTuesday) {
         
-            $MailBody.Add("Next Patch Tuesday will be in $TimespanToNextPatchTuesday days on $($PatchTuesday.Date.ToLongDateString())<br>")
+            $MailBody.Add("Next Patch Tuesday will be in $TimespanToNextPatchTuesday days on $($PatchTuesday.Date.ToLongDateString())<br>") | Out-Null
             "Next Patch Tuesday will be in $TimespanToNextPatchTuesday days on $($PatchTuesday.Date.ToLongDateString())"      
         }
 
         else {
             
-            $MailBody.Add($( "Today is Patch Tuesday" | ConvertTo-Html ))
+            $MailBody.Add($( "Today is Patch Tuesday" | ConvertTo-Html )) | Out-Null
             "Today is Patch Tuesday"            
         }
     }
@@ -338,13 +343,13 @@ Param(
     
         if($TimespanToNextSyncday) {
     
-            $MailBody.Add("Next synchronization day will be in $TimespanToNextSyncday days on $($SyncDay.Date.ToLongDateString())<br>")
+            $MailBody.Add("Next synchronization day will be in $TimespanToNextSyncday days on $($SyncDay.Date.ToLongDateString())<br>") | Out-Null
             "Next synchronization day will be in $TimespanToNextSyncday days on $($SyncDay.Date.ToLongDateString())"      
         }
 
         else {
         
-            $MailBody.Add("Today is Sync Day<br>")
+            $MailBody.Add("Today is Sync Day<br>") | Out-Null
             "Today is Sync Day"      
         }
     }
@@ -353,7 +358,7 @@ Param(
 
         if($Now -eq (Get-Date $Now -Day $CleanupDay)) {
         
-            $MailBody.Add("Today is WSUS clean up day<br>")
+            $MailBody.Add("Today is WSUS clean up day<br>") | Out-Null
             "Today is WSUS clean up day" 
             Break   
         }
@@ -361,14 +366,14 @@ Param(
         if($Now -lt (Get-Date $Now -Day $CleanupDay)) {
         
             $TimespanToNextCleanupDay = (New-TimeSpan -Start ((Get-Date $Now).date) -End (Get-Date $Now -Day $CleanupDay)).Days         
-            $MailBody.Add("Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((Get-Date $Now -Day $CleanupDay).ToLongDateString())<br>")
+            $MailBody.Add("Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((Get-Date $Now -Day $CleanupDay).ToLongDateString())<br>") | Out-Null
             "Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((Get-Date $Now -Day $CleanupDay).ToLongDateString())"           
         }
 
         if($Now -gt (Get-Date $Now -Day $CleanupDay)) {
         
             $TimespanToNextCleanupDay = (New-TimeSpan -Start ((Get-Date $Now).date) -End ((Get-Date ((Get-Date $Now).AddMonths(1)) -Day $CleanupDay)).ToLongDateString()).Days
-            $MailBody.Add("Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((Get-Date ((Get-Date $Now).AddMonths(1)) -Day $CleanupDay).ToLongDateString())<br>")
+            $MailBody.Add("Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((Get-Date ((Get-Date $Now).AddMonths(1)) -Day $CleanupDay).ToLongDateString())<br>") | Out-Null
             "Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((Get-Date ((Get-Date $Now).AddMonths(1)) -Day $CleanupDay).ToLongDateString())"     
         }
 
@@ -392,7 +397,7 @@ Param(
 
                     Write-Verbose -Message 'Case 1'
 
-                    $MailBody.Add("It is $($Schedule.ApprovalDelay) days after Sync Day. If -RunApprovalSchedules is specified this will approve updates for $($Group)<br>")
+                    $MailBody.Add("It is $($Schedule.ApprovalDelay) days after Sync Day. If -RunApprovalSchedules is specified this will approve updates for $($Group)<br>") | Out-Null
                     "It is $($Schedule.ApprovalDelay) days after Sync Day. If -RunApprovalSchedules is specified this will approve updates for $($Group)"
                  
                     if($RunApprovalSchedules) {
@@ -407,7 +412,7 @@ Param(
 
                 Write-Verbose -Message 'Case 2'
 
-                $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>")
+                $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>") | Out-Null
                 "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"   
             }
 
@@ -415,7 +420,7 @@ Param(
 
                 Write-Verbose -Message 'Case 3'
 
-                $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>")
+                $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>") | Out-Null
                 "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"
             }
 
@@ -423,7 +428,7 @@ Param(
 
                 Write-Verbose -Message 'Case 4'
 
-                $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>")
+                $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>") | Out-Null
                 "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"    
             }
         }
