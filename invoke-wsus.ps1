@@ -1,459 +1,437 @@
-﻿<#
+<#
 .SYNOPSIS
-   Invoke-Wsus is a function used to manage WSUS.
+   Invoke-WSUS is a function used to manage WSUS.
+
 .DESCRIPTION
-   Invoke-Wsus is a function that is used to determine the next Patch Tuesday, to sync a WSUS server with Microsoft,
-   to approve patches based on target WSUS groups, and to show WSUS target groups configuration.
+   Invoke-WSUS is a function that is used to determine the next Patch Tuesday, to sync a WSUS server with Microsoft, to approve patches based on target WSUS groups, and to show WSUS target groups configuration.
+
 .PARAMETER ShowApprovalGroups
    Shows the approval groups sorted in the JSON file retrieved with the SettingFile parameter.
+
 .PARAMETER SettingFile
    Specifies the path to a valid JSON file containing the name of schedule, the corresponding WSUS target groups and
    the delay in days between synchronization and approval.
-.PARAMETER ShowWsusTargetGroups
+
+.PARAMETER ShowWSUSTargetGroups
    Show all the existing WSUS target groups and the number of computers per group.
-.PARAMETER WsusName
+
+.PARAMETER WSUSName
    The name of the WSUS server to connect to.
-.PARAMETER WsusPort
+
+.PARAMETER WSUSPort
    The port of the WSUS server to use for the connection. Default is 8530.
-.PARAMETER WsusSsl
+
+.PARAMETER WSUSSsl
    Specifies that the WSUS server should use Secure Sockets Layer (SSL) via HTTPS to communicate with an upstream server.
-.PARAMETER SyncWsusNow
-   Forces the synchronization of the WSUS server specified with the WsusName parameter.
-.PARAMETER ShowLastWsusSync
+
+.PARAMETER SyncWSUSNow
+   Forces the synchronization of the WSUS server specified with the WSUSName parameter.
+
+.PARAMETER ShowLastWSUSSync
    Shows the date of the last WSUS synchronization with Microsoft.
+
 .PARAMETER ShowNextPatchTuesday
    Shows the date of the next Patch Tuesday aka Update Tuesday.
+
 .PARAMETER ShowNextSyncTuesday
    Shows the date of the next sync based on the value specified with the SyncDelay parameter.
+
 .PARAMETER SyncDelay
    Specifies the number of days to wait between Patch Tuesday and the day the WSUS server is synchronized.
+
 .PARAMETER ShowNextCleanupDay
    Shows the date of the next WSUS cleanup performed used AdamJ's script.
+
 .PARAMETER CleanupDay
    Specifies the day of the month at which the WSUS cleanup with AdamJ's script is executed.
+
 .PARAMETER ShowAll
    Shows the approval groups sorted from the JSON setting file, the existing WSUS target groups and the dates of the
    next events (Patch Tuesday, Synchronization day, WSUS clean up day and all the future approval dates).
+
 .PARAMETER ShowApprovalSchedules
    Shows all the future approval dates based on the settings specified in the SettingFile parameter.
+
 .PARAMETER RunApprovalSchedules
    Runs the approvals based on the settings specified in the SettingFile parameter.
+
 .PARAMETER SendMail
-   Send a mail wich contains the approval groups sorted from the JSON setting file, the existing WSUS target groups
-   and the dates of the    next events (Patch Tuesday, Synchronization day, WSUS clean up day and all the future
-   approval dates).
+   Send a mail wich contains the approval groups sorted from the JSON setting file, the existing WSUS target groups and the dates of the next events (Patch Tuesday, Synchronization day, WSUS clean up day and all the futureapproval dates).
+
 .PARAMETER SMTPServer
    Specifies the SMTP server to use to send the informative email.
+
 .PARAMETER From
    Specifies the sender address.
+
 .PARAMETER To
    Specifies the recipient address.
+
 .EXAMPLE
-   Invoke-Wsus -ShowApprovalGroups -SettingFile 'approvaldelaysettings.json'
+   Invoke-WSUS -ShowApprovalGroups -SettingFile 'approvaldelaysettings.json'
+
 .EXAMPLE
-   Invoke-Wsus -ShowWsusTargetGroups -WsusName 'wsusserver' -WsusPort 8530 -WsusSSL:$false
+   Invoke-WSUS -ShowWSUSTargetGroups -WSUSName 'WSUSserver' -WSUSPort 8530 -WSUSSSL:$false
+
 .EXAMPLE
-   Invoke-Wsus -SyncWsusNow -WsusName 'wsusserver' -WsusPort 8530 -WsusSSL:$false
+   Invoke-WSUS -SyncWSUSNow -WSUSName 'WSUSserver' -WSUSPort 8530 -WSUSSSL:$false
+
 .EXAMPLE
-   Invoke-Wsus -ShowLastWsusSync -WsusName 'rousww0045' -WsusPort 8530 -WsusSSL:$false
+   Invoke-WSUS -ShowLastWSUSSync -WSUSName 'rousww0045' -WSUSPort 8530 -WSUSSSL:$false
+
 .EXAMPLE
-   Invoke-Wsus -ShowNextPatchTuesday
+   Invoke-WSUS -ShowNextPatchTuesday
+
 .EXAMPLE
-   Invoke-Wsus -ShowNextSyncTuesday -SyncDelay 13
+   Invoke-WSUS -ShowNextSyncTuesday -SyncDelay 13
+
 .EXAMPLE
-   Invoke-Wsus -ShowAll -SettingFile 'approvaldelaysettings.json' -CleanupDay 7 -SyncDelay 13  -WsusName 'wsusserver' -WsusPort 8530 -WsusSSL:$false
+   Invoke-WSUS -ShowAll -SettingFile 'approvaldelaysettings.json' -CleanupDay 7 -SyncDelay 13  -WSUSName 'WSUSserver' -WSUSPort 8530 -WSUSSSL:$false
+
 .EXAMPLE
-   Invoke-Wsus -ShowApprovalSchedules -SettingFile 'approvaldelaysettings.json' -SyncDelay 13 -WsusName 'rousww0045' -WsusPort 8530
+   Invoke-WSUS -ShowApprovalSchedules -SettingFile 'approvaldelaysettings.json' -SyncDelay 13 -WSUSName 'rousww0045' -WSUSPort 8530
+
 .EXAMPLE
-   Invoke-Wsus -ShowApprovalSchedules -SettingFile 'E:\Script\approvaldelaysettings.json' -SyncDelay 13 -RunApprovalSchedules -WsusName 'rousww0045' -WsusPort 8530 -WsusSSL:$false
+   Invoke-WSUS -ShowApprovalSchedules -SettingFile 'E:\Script\approvaldelaysettings.json' -SyncDelay 13 -RunApprovalSchedules -WSUSName 'rousww0045' -WSUSPort 8530 -WSUSSSL:$false
+
 .NOTES
    Author:  happysysadm
    Website: http://www.happysysadm.com
    Twitter: @sysadm2010
 #>
 
-function Invoke-Wsus
-{
-    [CmdletBinding()]
-    Param
-    (
-        [Parameter(Mandatory=$true,ParameterSetName='Show Approval Groups')]
-        [switch]$ShowApprovalGroups,
+function Invoke-WSUS {
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show Approval Groups')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show All')]
-        [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
-        [ValidateScript({ Test-Path -Path $_ -PathType Leaf})]
-        [string]$SettingFile,
+[CmdletBinding()]
+Param(
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show Wsus Groups')]
-        [switch]$ShowWsusTargetGroups,
+    [Parameter(Mandatory=$true,ParameterSetName='Show Approval Groups')]
+    [Switch]$ShowApprovalGroups,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show Wsus Groups')]
-        [Parameter(Mandatory=$true,ParameterSetName='Sync Wsus')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show Last Sync')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show All')]
-        [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
-        [string]$WsusName,
+    [Parameter(Mandatory=$true,ParameterSetName='Show Approval Groups')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show All')]
+    [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
+    [ValidateScript({ Test-Path -Path $_ -PathType Leaf})]
+    [String]$SettingFile,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show Wsus Groups')]
-        [Parameter(Mandatory=$true,ParameterSetName='Sync Wsus')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show Last Sync')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show All')]
-        [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
-        [int]$WsusPort = 8530,
+    [Parameter(Mandatory=$true,ParameterSetName='Show WSUS Groups')]
+    [Switch]$ShowWSUSTargetGroups,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show Wsus Groups')]
-        [Parameter(Mandatory=$true,ParameterSetName='Sync Wsus')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show Last Sync')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show All')]
-        [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
-        [switch]$WsusSSL = $false,
+    [Parameter(Mandatory=$true,ParameterSetName='Show WSUS Groups')]
+    [Parameter(Mandatory=$true,ParameterSetName='Sync WSUS')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show Last Sync')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show All')]
+    [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
+    [String]$WSUSName,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Sync Wsus')]
-        [switch]$SyncWsusNow,
+    [Parameter(Mandatory=$true,ParameterSetName='Show WSUS Groups')]
+    [Parameter(Mandatory=$true,ParameterSetName='Sync WSUS')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show Last Sync')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show All')]
+    [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
+    [Int]$WSUSPort = 8530,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show Last Sync')]
-        [switch]$ShowLastWsusSync,
+    [Parameter(Mandatory=$true,ParameterSetName='Show WSUS Groups')]
+    [Parameter(Mandatory=$true,ParameterSetName='Sync WSUS')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show Last Sync')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show All')]
+    [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
+    [Switch]$WSUSSSL = $false,
+
+    [Parameter(Mandatory=$true,ParameterSetName='Sync WSUS')]
+    [Switch]$SyncWSUSNow,
+
+    [Parameter(Mandatory=$true,ParameterSetName='Show Last Sync')]
+    [Switch]$ShowLastWSUSSync,
         
-        [Parameter(Mandatory=$true,ParameterSetName='Show Next Patch Tuesday')]
-        [switch]$ShowNextPatchTuesday,
+    [Parameter(Mandatory=$true,ParameterSetName='Show Next Patch Tuesday')]
+    [Switch]$ShowNextPatchTuesday,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show Next Synchronization Day')]
-        [switch]$ShowNextSyncTuesday,
+    [Parameter(Mandatory=$true,ParameterSetName='Show Next Synchronization Day')]
+    [Switch]$ShowNextSyncTuesday,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show Next Synchronization Day')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show All')]
-        [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
-        [int]$SyncDelay,
+    [Parameter(Mandatory=$true,ParameterSetName='Show Next Synchronization Day')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show All')]
+    [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
+    [Int]$SyncDelay,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show Next CleanUp Day')]
-        [switch]$ShowNextCleanupDay,
+    [Parameter(Mandatory=$true,ParameterSetName='Show Next CleanUp Day')]
+    [Switch]$ShowNextCleanupDay,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show Next CleanUp Day')]
-        [Parameter(Mandatory=$true,ParameterSetName='Show All')]
-        [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
-        [int]$CleanupDay,
+    [Parameter(Mandatory=$true,ParameterSetName='Show Next CleanUp Day')]
+    [Parameter(Mandatory=$true,ParameterSetName='Show All')]
+    [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
+    [Int]$CleanupDay,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show All')]
-        [switch]$ShowAll,
+    [Parameter(Mandatory=$true,ParameterSetName='Show All')]
+    [Switch]$ShowAll,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
-        [switch]$ShowApprovalSchedules,
+    [Parameter(Mandatory=$true,ParameterSetName='Show Approval Schedules')]
+    [Switch]$ShowApprovalSchedules,
 
-        [Parameter(Mandatory=$false,ParameterSetName='Show Approval Schedules')]
-        [switch]$RunApprovalSchedules,
+    [Parameter(Mandatory=$false,ParameterSetName='Show Approval Schedules')]
+    [Switch]$RunApprovalSchedules,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
-        [switch]$SendMail,
+    [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
+    [Switch]$SendMail,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
-        [string]$SMTPServer,
+    [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
+    [String]$SMTPServer,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
-        [string]$From,
+    [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
+    [String]$From,
 
-        [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
-        [string]$To
-    )
+    [Parameter(Mandatory=$true,ParameterSetName='Send Mail')]
+    [String]$To
+)
 
-  $Now = Get-Date # '1 july 2018'
+    $Now = Get-Date
+    "Today is $Now"
 
-  "Today is $now"
+    $MailBody = New-Object System.Collections.ArrayList
 
-  $MailBody = @()
+    if($ShowApprovalGroups -or $SendMail -or $ShowAll) {
 
-  if($ShowApprovalGroups -or $SendMail -or $ShowAll){
+        Write-Verbose -Message "Showing Approval Delay in days for each WSUS target group"
 
-    Write-Verbose -Message "Showing Approval Delay in days for each WSUS target group"
-
-    $DelaySettings = Get-Content $SettingFile | ConvertFrom-Json
-
-    $DelaySettings
-    
-    $MailBody += $DelaySettings | ConvertTo-Html
-
+        $DelaySettings = Get-Content $SettingFile | ConvertFrom-Json
+        $DelaySettings
+        $MailBody.Add("$( $DelaySettings | ConvertTo-Html )")
     }
 
-  if($ShowWsusTargetGroups -or $SyncWsusNow -or $ShowLastWsusSync -or $SendMail -or $ShowAll){
+    if($ShowWSUSTargetGroups -or $SyncWSUSNow -or $ShowLastWSUSSync -or $SendMail -or $ShowAll) {
 
-    $WSUSServerParams = @{
+        $WSUSServerParams = @{
 
-        Name   = $WsusName
-
-        Port   = $WsusPort
-
-        UseSSL = $WsusSSL
-
+            Name   = $WSUSName
+            Port   = $WSUSPort
+            UseSSL = $WSUSSSL
         }
 
-    try {
+        try {
 
-        Write-Verbose -Message "Connecting to $WsusName"
-        
-        $Wsus = Get-WsusServer @WSUSServerParams
-
+            Write-Verbose -Message "Connecting to $WSUSName"       
+            $WSUS = Get-WSUSServer @WSUSServerParams
         }
 
-    catch { "Failed to connect to $WsusName"; break }
-
+        catch { 
+    
+            "Failed to connect to $WSUSName"
+            Break 
+        }
     }
 
-  if($ShowWsusTargetGroups -or $SendMail -or $ShowAll){
+    if($ShowWSUSTargetGroups -or $SendMail -or $ShowAll) {
     
-    try{
+        try {
     
-        Write-Verbose -Message "Retrieving target groups"
+            Write-Verbose -Message "Retrieving target groups"
+            $AllTargetGroups = $WSUS.GetComputerTargetGroups()
 
-        $AllTargetGroups = $Wsus.GetComputerTargetGroups()
+            Write-Verbose -Message "Showing names, ids and number of computers of each target group"    
+            $GroupInfo = New-Object System.Collections.ArrayList
 
-        Write-Verbose -Message "Showing names, ids and number of computers of each target group"
-        
-        $GroupInfo = @()
-
-        foreach($TargetGroup in $AllTargetGroups){
+            foreach($TargetGroup in $AllTargetGroups) {
     
-            $GroupInfo += $TargetGroup | select Name, @{Name='Total computers';Expression={$TargetGroup.GetComputerTargets().count}}
-
+                $GroupInfo.Add("$( $TargetGroup | Select Name, @{Name='Total computers'; Expression={$TargetGroup.GetComputerTargets().Count}} )")
             }
 
-        $GroupInfo | out-string -Width 160
+            $GroupInfo | Out-String -Width 160
 
-        $MailBody += $GroupInfo | ConvertTo-Html
-
-        }
-
-    catch{ Write-Error -Message "Failed to retrieve target groups from $WsusName" }
-
-    }
-
-  if($SyncWsusNow){
-
-    try {
-
-        Write-Verbose -Message "Synching $WsusName with Microsoft"
-
-        #$wsus.GetSubscription().StartSynchronization()
+            $MailBody.Add("$( $GroupInfo | ConvertTo-Html )")
 
         }
 
-        catch { write-error "Failed sync of $WsusName with Microsoft" }
-
-    }
-
-  if($ShowLastWsusSync -or $SendMail -or $ShowAll){
-
-    try {
-
-        Write-Verbose -Message "Showing timestamp of last sync of $WsusName with Microsoft"
-
-        $LastSync = $Wsus.GetSubscription().LastSynchronizationTime
-
-        "Last sync was $([int](New-TimeSpan -Start $LastSync -end (Get-Date)).TotalDays) days ago on $LastSync"
-
-        $MailBody += "Last sync was $([int](New-TimeSpan -Start $LastSync -end (Get-Date)).TotalDays) days ago on $LastSync<br>"
-
-        }
-
-        catch { write-error "Failed to retrieve timestamp of last sync of $WsusName with Microsoft" }
-
-    }
-
-  if($ShowNextPatchTuesday -or $ShowNextSyncTuesday -or $ShowApprovalSchedules -or $SendMail -or $ShowAll){
-
-    Write-Verbose -Message "Calculating date of the next Patch Tuesday aka Update Tuesday"
-
-    $BaseDate = ( Get-Date -Day 12 ).Date
-
-    $PatchTuesday = $BaseDate.AddDays( 2 - [int]$BaseDate.DayOfWeek )
-
-    If ( (Get-Date $now) -gt $PatchTuesday )
-
-        {
-
-        $LastPatchTuesday = $PatchTuesday
-
-        $BaseDate = $BaseDate.AddMonths( 1 )
-
-        $PatchTuesday = $BaseDate.AddDays( 2 - [int]$BaseDate.DayOfWeek )
-
+        catch { 
+    
+            Write-Error -Message "Failed to retrieve target groups from $WSUSName" 
         }
 
     }
 
-  if($ShowNextPatchTuesday -or $SendMail -or $ShowAll) {
+    if($SyncWSUSNow) {
+
+        try {
+
+            Write-Verbose -Message "Synching $WSUSName with Microsoft"
+            #$WSUS.GetSubscription().StartSynchronization()
+        }
+
+        catch { 
+        
+            Write-Error "Failed sync of $WSUSName with Microsoft" 
+        }
+    }
+
+    if($ShowLastWSUSSync -or $SendMail -or $ShowAll) {
+
+        try {
+
+            Write-Verbose -Message "Showing timestamp of last sync of $WSUSName with Microsoft"
+
+            $LastSync = $WSUS.GetSubscription().LastSynchronizationTime
+            "Last sync was $([Int](New-TimeSpan -Start $LastSync -end (Get-Date)).TotalDays) days ago on $LastSync"
+            $MailBody.Add("Last sync was $([Int](New-TimeSpan -Start $LastSync -end (Get-Date)).TotalDays) days ago on $LastSync<br>")
+        }
+
+        catch { 
+        
+            Write-Error "Failed to retrieve timestamp of last sync of $WSUSName with Microsoft" 
+        }
+    }
+
+    if($ShowNextPatchTuesday -or $ShowNextSyncTuesday -or $ShowApprovalSchedules -or $SendMail -or $ShowAll) {
+
+        Write-Verbose -Message "Calculating date of the next Patch Tuesday aka Update Tuesday"
+
+        $BaseDate = ( Get-Date -Day 12 ).Date
+        $PatchTuesday = $BaseDate.AddDays( 2 - [Int]$BaseDate.DayOfWeek )
+
+        If ((Get-Date $Now) -gt $PatchTuesday) {
+
+            $LastPatchTuesday = $PatchTuesday
+            $BaseDate = $BaseDate.AddMonths( 1 )
+            $PatchTuesday = $BaseDate.AddDays( 2 - [Int]$BaseDate.DayOfWeek )
+        }
+    }
+
+    if($ShowNextPatchTuesday -or $SendMail -or $ShowAll) {
     
         Write-Verbose -Message "Showing date of the next Patch Tuesday aka Update Tuesday"
 
-        $TimespanToNextPatchTuesday = [int](New-TimeSpan -Start ((Get-Date $Now).date) -End $PatchTuesday.date).TotalDays
+        $TimespanToNextPatchTuesday = [Int](New-TimeSpan -Start ((Get-Date $Now).Date) -End $PatchTuesday.Date).TotalDays
 
-        if($TimespanToNextPatchTuesday){
+        if($TimespanToNextPatchTuesday) {
         
-            $MailBody += "Next Patch Tuesday will be in $TimespanToNextPatchTuesday days on $($PatchTuesday.date.ToLongDateString())<br>"
-            
-            "Next Patch Tuesday will be in $TimespanToNextPatchTuesday days on $($PatchTuesday.date.ToLongDateString())"
-            
-            }
-
-        else{
-            
-            $MailBody += "Today is Patch Tuesday" | ConvertTo-Html
-
-            "Today is Patch Tuesday"
-            
-            }
-        
+            $MailBody.Add("Next Patch Tuesday will be in $TimespanToNextPatchTuesday days on $($PatchTuesday.Date.ToLongDateString())<br>")
+            "Next Patch Tuesday will be in $TimespanToNextPatchTuesday days on $($PatchTuesday.Date.ToLongDateString())"      
         }
 
-  if($ShowNextSyncTuesday -or $ShowApprovalSchedules -or $SendMail -or $ShowAll){
+        else {
+            
+            $MailBody.Add($( "Today is Patch Tuesday" | ConvertTo-Html ))
+            "Today is Patch Tuesday"            
+        }
+    }
 
-    Write-Verbose -Message "Showing date of the next synchronization day based on date of last and next patch tuesdays"
+    if($ShowNextSyncTuesday -or $ShowApprovalSchedules -or $SendMail -or $ShowAll) {
 
-    if ($Now.date -le $LastPatchTuesday.date.AddDays($SyncDelay)) {
+        Write-Verbose -Message "Showing date of the next synchronization day based on date of last and next patch tuesdays"
+
+        if ($Now.date -le $LastPatchTuesday.date.AddDays($SyncDelay)) {
  
-        $SyncDay = (Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)
-   
+            $SyncDay = (Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)  
         }
 
-    else{
+        else {
 
-        $SyncDay = (Get-Date -Date $PatchTuesday).AddDays($SyncDelay)
-
-        }
-
-    $TimespanToNextSyncday = (New-TimeSpan -Start (Get-Date $Now).date -End $SyncDay.Date).Days
-    
-    if($TimespanToNextSyncday){
-    
-        $MailBody += "Next synchronization day will be in $TimespanToNextSyncday days on $($SyncDay.date.ToLongDateString())<br>"
-        
-        "Next synchronization day will be in $TimespanToNextSyncday days on $($SyncDay.date.ToLongDateString())"
-        
-        }
-
-        else{
-        
-            $MailBody += "Today is Sync Day<br>"
-            
-            "Today is Sync Day"
-        
-        }
+            $SyncDay = (Get-Date -Date $PatchTuesday).AddDays($SyncDelay)
 
         }
 
-   if($ShowNextCleanupDay -or $SendMail -or $ShowAll){
-
-        if($Now -eq (get-date $Now -Day $CleanupDay)){
-        
-            $MailBody += "Today is WSUS clean up day<br>"
-            
-            "Today is WSUS clean up day" ; break
-            
-            }
-
-        if($Now -lt (get-date $Now -Day $CleanupDay)){
-        
-            $TimespanToNextCleanupDay = (New-TimeSpan -Start ((Get-Date $Now).date) -End (get-date $Now -Day $CleanupDay)).Days
-            
-            $MailBody += "Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((get-date $Now -Day $CleanupDay).ToLongDateString())<br>"
-            
-            "Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((get-date $Now -Day $CleanupDay).ToLongDateString())"
-            
-            }
-
-        if($now -gt (get-date $now -Day $CleanupDay)){
-        
-            $TimespanToNextCleanupDay = (New-TimeSpan -Start ((Get-Date $Now).date) -End ((get-date ((get-date $Now).AddMonths(1)) -Day $CleanupDay)).ToLongDateString()).Days
-
-            $MailBody += "Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((get-date ((get-date $Now).AddMonths(1)) -Day $CleanupDay).ToLongDateString())<br>"
-            
-            "Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((get-date ((get-date $Now).AddMonths(1)) -Day $CleanupDay).ToLongDateString())"
-            
-            }
-
-   }
-
-   if($ShowApprovalSchedules -or $SendMail -or $ShowAll){
-
-        if($RunApprovalSchedules){
-
-            Write-Verbose -Message "Retrieving needed patches to approve from $WsusName"
-        
-            $allupdates = $wsus.GetUpdates()
-            
-            $NeededUpdates = Get-WsusUpdate -Approval Unapproved -Status FailedOrNeeded
-
-            }
-
-        
-        foreach ($Schedule in $DelaySettings) {
-
-        if($Now.Date -eq (Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay).AddDays($schedule.ApprovalDelay).Date){
-
-                    foreach ($Group in $Schedule.Collections) {
-
-                    Write-Verbose -Message 'Case 1'
-
-                    $MailBody += "It is $($Schedule.ApprovalDelay) days after Sync Day. If -RunApprovalSchedules is specified this will approve updates for $($Group)<br>"
-
-                    "It is $($Schedule.ApprovalDelay) days after Sync Day. If -RunApprovalSchedules is specified this will approve updates for $($Group)"
-
-                    
-                    if($RunApprovalSchedules) {
-
-                        Write-Verbose -Message "Approving WSUS patches for $group"
-
-                        #$NeededUpdates | Approve-WsusUpdate -Action Install -TargetGroupName $Group -Verbose
-
-                    }
-
-                }
+        $TimespanToNextSyncday = (New-TimeSpan -Start (Get-Date $Now).date -End $SyncDay.Date).Days
     
-            }
-
-        elseif(($Now.date -lt (Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay).AddDays($schedule.ApprovalDelay).Date) -and ($Now.date -gt $LastpatchTuesday)){
-
-                Write-Verbose -Message 'Case 2'
-
-                $MailBody += "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>"
-
-            "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"
+        if($TimespanToNextSyncday) {
     
-            }
+            $MailBody.Add("Next synchronization day will be in $TimespanToNextSyncday days on $($SyncDay.Date.ToLongDateString())<br>")
+            "Next synchronization day will be in $TimespanToNextSyncday days on $($SyncDay.Date.ToLongDateString())"      
+        }
 
-        elseif(($Now.date -gt $SyncDay.AddDays($Schedule.ApprovalDelay).Date)){
-
-            Write-Verbose -Message 'Case 3'
-
-            $MailBody += "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>"
-
-            "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"
-    
-            }
-
-        else{
-
-            Write-Verbose -Message 'Case 4'
-
-            $MailBody += "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>"
-            
-            "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"
+        else {
         
-            }
-}
+            $MailBody.Add("Today is Sync Day<br>")
+            "Today is Sync Day"      
+        }
+    }
+
+   if($ShowNextCleanupDay -or $SendMail -or $ShowAll) {
+
+        if($Now -eq (Get-Date $Now -Day $CleanupDay)) {
+        
+            $MailBody.Add("Today is WSUS clean up day<br>")
+            "Today is WSUS clean up day" 
+            Break   
+        }
+
+        if($Now -lt (Get-Date $Now -Day $CleanupDay)) {
+        
+            $TimespanToNextCleanupDay = (New-TimeSpan -Start ((Get-Date $Now).date) -End (Get-Date $Now -Day $CleanupDay)).Days         
+            $MailBody.Add("Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((Get-Date $Now -Day $CleanupDay).ToLongDateString())<br>")
+            "Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((Get-Date $Now -Day $CleanupDay).ToLongDateString())"           
+        }
+
+        if($Now -gt (Get-Date $Now -Day $CleanupDay)) {
+        
+            $TimespanToNextCleanupDay = (New-TimeSpan -Start ((Get-Date $Now).date) -End ((Get-Date ((Get-Date $Now).AddMonths(1)) -Day $CleanupDay)).ToLongDateString()).Days
+            $MailBody.Add("Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((Get-Date ((Get-Date $Now).AddMonths(1)) -Day $CleanupDay).ToLongDateString())<br>")
+            "Next WSUS clean up day is in $TimespanToNextCleanupDay days on $((Get-Date ((Get-Date $Now).AddMonths(1)) -Day $CleanupDay).ToLongDateString())"     
+        }
 
     }
 
-        if($SendMail){
+    if($ShowApprovalSchedules -or $SendMail -or $ShowAll) {
+
+        if($RunApprovalSchedules) {
+
+            Write-Verbose -Message "Retrieving needed patches to approve from $WSUSName"
+        
+            $AllUpdates = $WSUS.GetUpdates()            
+            $NeededUpdates = Get-WSUSUpdate -Approval Unapproved -Status FailedOrNeeded
+        }
+        
+        foreach ($Schedule in $DelaySettings) {
+
+            if($Now.Date -eq (Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay).AddDays($schedule.ApprovalDelay).Date) {
+
+                foreach ($Group in $Schedule.Collections) {
+
+                    Write-Verbose -Message 'Case 1'
+
+                    $MailBody.Add("It is $($Schedule.ApprovalDelay) days after Sync Day. If -RunApprovalSchedules is specified this will approve updates for $($Group)<br>")
+                    "It is $($Schedule.ApprovalDelay) days after Sync Day. If -RunApprovalSchedules is specified this will approve updates for $($Group)"
+                 
+                    if($RunApprovalSchedules) {
+
+                        Write-Verbose -Message "Approving WSUS patches for $group"
+                        #$NeededUpdates | Approve-WSUSUpdate -Action Install -TargetGroupName $Group -Verbose
+                    }
+                }
+            }
+
+            elseif(($Now.date -lt (Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay).AddDays($schedule.ApprovalDelay).Date) -and ($Now.date -gt $LastpatchTuesday)) {
+
+                Write-Verbose -Message 'Case 2'
+
+                $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>")
+                "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"   
+            }
+
+            elseif(($Now.date -gt $SyncDay.AddDays($Schedule.ApprovalDelay).Date)) {
+
+                Write-Verbose -Message 'Case 3'
+
+                $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>")
+                "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"
+            }
+
+            else {
+
+                Write-Verbose -Message 'Case 4'
+
+                $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>")
+                "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"    
+            }
+        }
+    }
+
+    if($SendMail) {
 
         $MailBody
-        
         Send-MailMessage -SmtpServer $SMTPServer -from $From -to $To -BodyAsHtml -Subject 'WSUS Actions Report' -Body ($MailBody | Out-String)
-
-        }
+    }
 }
