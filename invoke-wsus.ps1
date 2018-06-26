@@ -198,10 +198,9 @@ Param(
     if($ShowApprovalGroups -or $SendMail -or $ShowAll) {
 
         Write-Verbose -Message "Showing Approval Delay in days for each WSUS target group"
-
         $DelaySettings = Get-Content $SettingFile | ConvertFrom-Json
         $DelaySettings
-        $MailBody.Add(($DelaySettings | ConvertTo-Html)) | Out-Null
+        $MailBody.Add(($DelaySettings | select Name,@{Name='wsusgroup'; Expression={$_.WsusGroup -join ', '}},ApprovalDelay | ConvertTo-Html)) | Out-Null
     }
 
     if($ShowWSUSTargetGroups -or $SyncWSUSNow -or $ShowLastWSUSSync -or $SendMail -or $ShowAll -or $ShowApprovalSchedules) {
@@ -264,7 +263,7 @@ Param(
         try {
 
             Write-Verbose -Message "Synching $WSUSName with Microsoft"
-            #$WSUS.GetSubscription().StartSynchronization()
+            $WSUS.GetSubscription().StartSynchronization()
         }
 
         catch { 
@@ -354,7 +353,7 @@ Param(
 
             if($RunApprovalSchedules){ 
             
-                #$WSUS.GetSubscription().StartSynchronization()
+                $WSUS.GetSubscription().StartSynchronization()
                 
                 }
         }
@@ -392,16 +391,18 @@ Param(
             Write-Verbose -Message "Retrieving needed patches to approve from $WSUSName"
         
             $AllUpdates = $WSUS.GetUpdates()            
-            #$NeededUpdates = Get-WSUSUpdate -Approval Unapproved -Status FailedOrNeeded
+            $NeededUpdates = Get-WSUSUpdate -Approval Unapproved -Status FailedOrNeeded
         }
         
         foreach ($Schedule in $DelaySettings) {
 
+            Write-Verbose "Working on $($schedule.name) schedule"
+         
             if($Now.Date -eq (Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay).AddDays($schedule.ApprovalDelay).Date) {
 
-                foreach ($Group in $Schedule.Collections) {
+                Write-Verbose -Message "Case 1 for $($Schedule.name) schedule"
 
-                    Write-Verbose -Message 'Case 1'
+                foreach ($Group in $Schedule.WsusGroup) {
 
                     $MailBody.Add("It is $($Schedule.ApprovalDelay) days after Sync Day. If -RunApprovalSchedules is specified this will approve updates for $($Group)<br>") | Out-Null
                     "It is $($Schedule.ApprovalDelay) days after Sync Day. If -RunApprovalSchedules is specified this will approve updates for $($Group)"
@@ -416,7 +417,7 @@ Param(
 
             elseif(($Now.date -lt (Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay).AddDays($schedule.ApprovalDelay).Date) -and ($Now.date -gt $LastpatchTuesday)) {
 
-                Write-Verbose -Message 'Case 2'
+                Write-Verbose -Message "Case 2 for $($Schedule.name) schedule"
 
                 $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>") | Out-Null
                 "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"   
@@ -424,7 +425,7 @@ Param(
 
             elseif(($Now.date -gt $SyncDay.AddDays($Schedule.ApprovalDelay).Date)) {
 
-                Write-Verbose -Message 'Case 3'
+                Write-Verbose -Message "Case 3 for $($Schedule.name) schedule"
 
                 $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>") | Out-Null
                 "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $LastPatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"
@@ -432,7 +433,7 @@ Param(
 
             else {
 
-                Write-Verbose -Message 'Case 4'
+                Write-Verbose -Message "Case 4 for $($Schedule.name) schedule"
 
                 $MailBody.Add("Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())<br>") | Out-Null
                 "Next approval for the $($Schedule.Name) schedule will happen in $((New-TimeSpan -Start $Now.date -End (((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date)).days) days on $((((Get-Date -Date $PatchTuesday).AddDays($SyncDelay)).AddDays($Schedule.ApprovalDelay).date).ToLongDateString())"    
