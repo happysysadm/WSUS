@@ -190,7 +190,7 @@ Param(
     [String]$To
 )
 
-    $Now = Get-Date
+    $Now = Get-Date # "1 July 2018"
     "Today is $Now"
 
     $MailBody = New-Object System.Collections.ArrayList
@@ -290,18 +290,21 @@ Param(
     }
 
     if($ShowNextPatchTuesday -or $ShowNextSyncDay -or $ShowApprovalSchedules -or $SendMail -or $ShowAll) {
-
         Write-Verbose -Message "Calculating date of the next Patch Tuesday aka Update Tuesday"
-
-        $BaseDate = ( Get-Date -Day 12 ).Date
+        $BaseDate = ( Get-Date $now -Day 12 ).Date
         $PatchTuesday = $BaseDate.AddDays( 2 - [Int]$BaseDate.DayOfWeek )
-
         If ((Get-Date $Now) -gt $PatchTuesday) {
-
             $LastPatchTuesday = $PatchTuesday
             $BaseDate = $BaseDate.AddMonths( 1 )
             $PatchTuesday = $BaseDate.AddDays( 2 - [Int]$BaseDate.DayOfWeek )
-        }
+            }
+        else {
+            $BaseDate = $BaseDate.AddMonths( -1 )
+            $LastPatchTuesday = $BaseDate.AddDays( 2 - [Int]$BaseDate.DayOfWeek )
+            }
+        Write-Verbose "Next Patch Tuesday is on $PatchTuesday"
+        Write-Verbose "Last Patch Tuesday was on $LastPatchTuesday"
+                   
     }
 
     if($ShowNextPatchTuesday -or $SendMail -or $ShowAll) {
